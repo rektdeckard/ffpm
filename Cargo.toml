@@ -1,0 +1,25 @@
+[package]
+name = "ffpm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aes = "0.8"
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+arboard = "3"
+base64 = "0.22"
+cbc = "0.1"
+cipher = { version = "0.4", features = ["alloc"] }
+crossterm = "0.28"
+des = "0.8"
+hmac = "0.12"
+ini = "1"
+pbkdf2 = { version = "0.12", features = ["hmac"] }
+ratatui = "0.29"
+rpassword = "7"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"

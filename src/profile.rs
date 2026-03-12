@@ -18,6 +18,14 @@ struct RawLogin {
     hostname: Option<String>,
     encrypted_username: Option<String>,
     encrypted_password: Option<String>,
+    #[serde(default)]
+    time_created: Option<u64>,
+    #[serde(default)]
+    time_last_used: Option<u64>,
+    #[serde(default)]
+    time_password_changed: Option<u64>,
+    #[serde(default)]
+    times_used: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,6 +39,10 @@ pub struct Login {
     pub hostname: String,
     pub username: String,
     pub password: String,
+    pub time_created: u64,
+    pub time_last_used: u64,
+    pub time_password_changed: u64,
+    pub times_used: u32,
 }
 
 /// Find the Firefox data directory for the current platform.
@@ -193,9 +205,12 @@ pub fn load_logins(profile_dir: &Path, master_key: &crate::decrypt::MasterKeys) 
             hostname,
             username,
             password,
+            time_created: raw.time_created.unwrap_or(0),
+            time_last_used: raw.time_last_used.unwrap_or(0),
+            time_password_changed: raw.time_password_changed.unwrap_or(0),
+            times_used: raw.times_used.unwrap_or(0),
         });
     }
 
-    logins.sort_by(|a, b| a.hostname.cmp(&b.hostname));
     Ok(logins)
 }

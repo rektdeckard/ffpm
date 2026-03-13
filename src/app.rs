@@ -40,6 +40,10 @@ impl SortField {
         Self::ALL[(self.index() + 1) % Self::ALL.len()]
     }
 
+    fn prev(self) -> Self {
+        Self::ALL[(self.index() + Self::ALL.len() - 1) % Self::ALL.len()]
+    }
+
     fn default_ascending(self) -> bool {
         matches!(self, SortField::Site | SortField::Username)
     }
@@ -48,7 +52,7 @@ impl SortField {
         match self {
             SortField::Site => "Site",
             SortField::Username => "Username",
-            SortField::LastUsed => "Last Used",
+            SortField::LastUsed => "Last used",
             SortField::Created => "Created",
             SortField::Changed => "Changed",
             SortField::TimesUsed => "Uses",
@@ -95,6 +99,14 @@ impl App {
 
     fn sort_asc(&self) -> bool {
         self.sort_ascending[self.sort_field.index()]
+    }
+
+    fn show_sort_message(&mut self) {
+        self.message = Some(format!(
+            "Sort: {} {}",
+            self.sort_field.label(),
+            if self.sort_asc() { "\u{2191}" } else { "\u{2193}" }
+        ));
     }
 
     fn apply_sort(&mut self) {
@@ -222,29 +234,18 @@ impl App {
             KeyCode::Char('s') => {
                 self.sort_field = self.sort_field.next();
                 self.apply_sort();
-                self.message = Some(format!(
-                    "Sort: {} {}",
-                    self.sort_field.label(),
-                    if self.sort_asc() {
-                        "\u{25b2}"
-                    } else {
-                        "\u{25bc}"
-                    }
-                ));
+                self.show_sort_message();
             }
             KeyCode::Char('S') => {
+                self.sort_field = self.sort_field.prev();
+                self.apply_sort();
+                self.show_sort_message();
+            }
+            KeyCode::Char('d') => {
                 let idx = self.sort_field.index();
                 self.sort_ascending[idx] = !self.sort_ascending[idx];
                 self.apply_sort();
-                self.message = Some(format!(
-                    "Sort: {} {}",
-                    self.sort_field.label(),
-                    if self.sort_asc() {
-                        "\u{25b2}"
-                    } else {
-                        "\u{25bc}"
-                    }
-                ));
+                self.show_sort_message();
             }
             _ => {}
         }
@@ -299,7 +300,9 @@ impl App {
     }
 
     fn render_search(&self, frame: &mut Frame, area: Rect) {
-        let title = format!(" ffpm \u{2502} {} ", self.profile_name);
+        let title = format!(" ffpm \u{2502} {} ", self.profile_name)
+            .bold()
+            .reversed();
         let (text, style) = if self.mode == Mode::Search {
             (
                 format!("/{}", self.filter),
@@ -337,9 +340,9 @@ impl App {
     fn render_table(&mut self, frame: &mut Frame, area: Rect) {
         let sort = self.sort_field;
         let arrow = if self.sort_asc() {
-            " \u{25b2}"
+            " \u{2191}"
         } else {
-            " \u{25bc}"
+            " \u{2193}"
         };
 
         let header_label = |field: SortField, name: &str| -> Cell<'static> {
@@ -374,7 +377,7 @@ impl App {
         ];
 
         if show_last_used {
-            header_cells.push(header_label(SortField::LastUsed, "Last Used"));
+            header_cells.push(header_label(SortField::LastUsed, "Last used"));
             widths.push(Constraint::Length(12));
         }
         if show_created {
@@ -423,7 +426,7 @@ impl App {
             })
             .collect();
 
-        let count = format!(" {} logins ", self.filtered.len());
+        let count = format!(" {} logins ", self.filtered.len()).reversed();
         let active = self.mode == Mode::Normal;
         let table = Table::new(rows, widths)
             .header(header)
@@ -445,9 +448,38 @@ impl App {
             } else {
                 Style::default().bg(Color::DarkGray).fg(Color::White)
             })
-            .highlight_symbol("\u{25b8} ");
+            .highlight_symbol("\u{2192} ");
 
         frame.render_stateful_widget(table, area, &mut self.table_state);
+
+        // Draw a horizontal separator between header and rows
+        let sep_y = area.y + 2;
+        if sep_y < area.y + area.height.saturating_sub(1) {
+            let inner_x = area.x + 1;
+            let inner_width = area.width.saturating_sub(2);
+            let border_color = if active {
+                Color::Yellow
+            } else {
+                Color::DarkGray
+            };
+
+            // Left junction ├
+            frame.render_widget(
+                Paragraph::new("\u{251c}").style(Style::default().fg(border_color)),
+                Rect::new(area.x, sep_y, 1, 1),
+            );
+            // Horizontal line ─
+            let line = "\u{2500}".repeat(inner_width as usize);
+            frame.render_widget(
+                Paragraph::new(line).style(Style::default().fg(border_color)),
+                Rect::new(inner_x, sep_y, inner_width, 1),
+            );
+            // Right junction ┤
+            frame.render_widget(
+                Paragraph::new("\u{2524}").style(Style::default().fg(border_color)),
+                Rect::new(area.x + area.width - 1, sep_y, 1, 1),
+            );
+        }
 
         if self.filtered.is_empty() {
             let msg = if self.filter.is_empty() {
@@ -487,10 +519,10 @@ impl App {
                 Span::raw(" URL  "),
                 Span::styled("p", Style::default().fg(Color::Yellow)),
                 Span::raw(" Reveal  "),
-                Span::styled("s", Style::default().fg(Color::Yellow)),
+                Span::styled("s/S", Style::default().fg(Color::Yellow)),
                 Span::raw(" Sort  "),
-                Span::styled("S", Style::default().fg(Color::Yellow)),
-                Span::raw(" Reverse  "),
+                Span::styled("d", Style::default().fg(Color::Yellow)),
+                Span::raw(" Direction  "),
                 Span::styled("q", Style::default().fg(Color::Yellow)),
                 Span::raw(" Quit"),
             ])
